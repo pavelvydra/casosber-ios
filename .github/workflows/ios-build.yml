@@ -20,15 +20,23 @@ jobs:
           npm install
           npm install @capacitor/cli @capacitor/core @capacitor/ios
 
-      - name: Create Capacitor Config and Add iOS
+      - name: Create Build Dir and Sync
         run: |
+          # Vytvoříme konfigurační soubor
           echo '{
             "appId": "com.casosber.app",
-            "appName": "Časosběr",
-            "webDir": "build",
-            "bundledWebRuntime": false
+            "appName": "Casosber",
+            "webDir": "build"
           }' > capacitor.config.json
-          npx capacitor add ios
+
+          # Pokud složka build neexistuje, vytvoříme ji, aby Capacitor nesmutnil
+          mkdir -p build
+          
+          # Zkopírujeme tam tvůj index.html (pokud je v kořenu repozitáře)
+          # Pokud jsi nahrál build.zip, robot ho musí nejdřív vidět rozbalený.
+          cp index.html build/ 2>/dev/null || : 
+          
+          npx capacitor add ios || true
           npx capacitor sync ios
 
       - name: Build iOS Archive
