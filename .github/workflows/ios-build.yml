@@ -20,8 +20,9 @@ jobs:
           npm install
           npm install @capacitor/cli @capacitor/core @capacitor/ios
 
-      - name: Sync Capacitor
+      - name: Add and Sync iOS
         run: |
+          npx capacitor add ios
           npx capacitor sync ios
 
       - name: Build iOS Archive
