@@ -20,9 +20,15 @@ jobs:
           npm install
           npm install @capacitor/cli @capacitor/core @capacitor/ios
 
-      - name: Add and Sync iOS
+      - name: Create Capacitor Config and Add iOS
         run: |
-          npx capacitor add ios --app-id "com.casosber.app" --app-name "Časosběr"
+          echo '{
+            "appId": "com.casosber.app",
+            "appName": "Časosběr",
+            "webDir": "build",
+            "bundledWebRuntime": false
+          }' > capacitor.config.json
+          npx capacitor add ios
           npx capacitor sync ios
 
       - name: Build iOS Archive
