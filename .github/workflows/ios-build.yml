@@ -22,7 +22,7 @@ jobs:
 
       - name: Add and Sync iOS
         run: |
-          npx capacitor add ios
+          npx capacitor add ios --app-id "com.casosber.app" --app-name "Časosběr"
           npx capacitor sync ios
 
       - name: Build iOS Archive
