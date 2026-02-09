@@ -25,4 +25,10 @@ jobs:
       - name: Build iOS Archive
         run: |
           cd ios/App
-          xcodebuild -scheme App -destination 'generic/platform=iOS' -archivePath App.xcarchive archive
+          xcodebuild -scheme App \
+            -destination 'generic/platform=iOS' \
+            -archivePath App.xcarchive \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            archive  
