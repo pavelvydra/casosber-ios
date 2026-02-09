@@ -20,22 +20,23 @@ jobs:
           npm install
           npm install @capacitor/cli @capacitor/core @capacitor/ios
 
-      - name: Create Build Dir and Sync
+      - name: Prepare Build Directory
         run: |
-          # Vytvoříme konfigurační soubor
+          # 1. Vytvoříme složku build
+          mkdir -p build
+
+          # 2. Najdeme index.html a vše ostatní a zkopírujeme to do složky build
+          # Tento příkaz prohledá všechny složky a najde tvůj web
+          find . -name "index.html" -exec cp -r $(dirname {})/. build/ \;
+
+          # 3. Vytvoříme konfigurační soubor
           echo '{
             "appId": "com.casosber.app",
             "appName": "Casosber",
             "webDir": "build"
           }' > capacitor.config.json
 
-          # Pokud složka build neexistuje, vytvoříme ji, aby Capacitor nesmutnil
-          mkdir -p build
-          
-          # Zkopírujeme tam tvůj index.html (pokud je v kořenu repozitáře)
-          # Pokud jsi nahrál build.zip, robot ho musí nejdřív vidět rozbalený.
-          cp index.html build/ 2>/dev/null || : 
-          
+          # 4. Spustíme Capacitor
           npx capacitor add ios || true
           npx capacitor sync ios
 
