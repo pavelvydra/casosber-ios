@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <!-- Toto je klíčové pro mobilní zobrazení -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Time Tracker (PWA)</title>
+    
+    <!-- 
+        NOVINKA PWA: Propojení s Manifestem a nastavení barvy status baru.
+        Manifest definuje, jak se aplikace zobrazí na ploše.
+    -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#005a9c"/>
+    
+    <!-- 
+      --- Sekce CSS ---
+    -->
+    <style>
+        /* Základní nastavení */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: #f4f7f6;
+            color: #333;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        h1, h2 {
+            color: #005a9c;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 5px;
+        }
+
+        /* Karty pro oddělení sekcí */
+        .card {
+            background-color: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        /* Formulářové prvky */
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        /* Inputy a selecty uděláme responzivní */
+        input[type="text"],
+        select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box; /* Důležité pro správnou šířku */
+            font-size: 16px; /* Zabrání zoomování na iPhonech */
+        }
+        
+        /* Styl pro zobrazení aktivního měření */
+        #tracking-status {
+            font-weight: bold;
+            text-align: center;
+            padding: 10px;
+            margin-bottom: 15px;
+            border-radius: 4px;
+            color: #333;
+            background-color: #ffe0b2; /* Světle oranžová */
+            display: none; /* Skryto, dokud není aktivní */
+        }
+        .tracking-active {
+             background-color: #e0f7fa; /* Světle tyrkysová */
+             color: #00796b;
+             border: 1px solid #00bcd4;
+             display: block !important;
+        }
+
+
+        /* Tlačítka */
+        .btn, .btn-secondary, .btn-danger, .btn-export, .btn-reset {
+            display: block;
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 4px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            text-align: center;
+            margin-bottom: 10px; /* Mezera mezi tlačítky v sekci */
+        }
+
+        /* Tlačítko START */
+        .btn-start {
+            background-color: #4CAF50; /* Zelená */
+            color: white;
+        }
+        .btn-start:hover {
+            background-color: #43a047;
+        }
+        /* Tlačítko END */
+        .btn-end {
+            background-color: #FF5722; /* Oranžovo-červená */
+            color: white;
+        }
+        .btn-end:hover {
+            background-color: #e64a19;
+        }
+
+        .btn-secondary {
+            background-color: #6c757d;
+            color: white;
+        }
+
+        /* Tlačítko pro Export */
+        .btn-export {
+            background-color: #1a73e8; /* Google modrá */
+            color: white;
+            margin-top: 15px;
+        }
+        .btn-export:hover {
+            background-color: #1764cb;
+        }
+
+        /* Tlačítko pro smazání historie */
+        .btn-danger {
+            background-color: #dc3545;
+            color: white;
+            margin-top: 5px; /* Menší mezera */
+        }
+        
+        /* NOVÉ: Tlačítko pro celkový reset, tmavší a výraznější */
+        .btn-reset {
+            background-color: #6a1b9a; /* Tmavě fialová, aby se odlišila */
+            color: white;
+            margin-top: 15px;
+        }
+        .btn-reset:hover {
+            background-color: #4a148c;
+        }
+
+
+        /* Seznamy */
+        ul {
+            list-style-type: none;
+            padding-left: 0;
+        }
+
+        /* Položka v seznamu zakázek s tlačítkem smazat */
+        #project-list li {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px;
+            border-bottom: 1px solid #eee;
+        }
+
+        #project-list li button {
+            background: none;
+            border: 1px solid #dc3545;
+            color: #dc3545;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            padding: 3px 6px;
+        }
+
+        /* Položka v historii záznamů */
+        .entry-item {
+            background-color: #f9f9f9;
+            padding: 10px;
+            border: 1px solid #e0e0e0;
+            border-radius: 4px;
+            margin-bottom: 10px;
+        }
+        .entry-item strong {
+            color: #005a9c;
+            font-size: 1.1em;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Time Tracker (START/END)</h1>
+
+        <!-- SEKCE 1: ZADÁNÍ ČASU -->
+        <div class="card">
+            <h2>Měření času</h2>
+            <!-- Informace o aktivním měření -->
+            <div id="tracking-status"></div>
+
+            <div class="form-group">
+                <label for="project-select">Zakázka:</label>
+                <!-- Tento select se naplní automaticky pomocí JavaScriptu -->
+                <select id="project-select" required></select>
+            </div>
+            
+            <!-- Tlačítko, které se přepíná mezi START a END -->
+            <button id="toggle-tracking-btn" class="btn-start">START MĚŘENÍ</button>
+        </div>
+
+        <!-- SEKCE 2: SPRÁVA ZAKÁZEK -->
+        <div class="card">
+            <h2>Správa zakázek</h2>
+            <form id="project-form">
+                <div class="form-group">
+                    <label for="new-project-name">Název nové zakázky:</label>
+                    <input type="text" id="new-project-name" placeholder="Např. 'Web pro klienta X'" required>
+                </div>
+                <button type="submit" class="btn-secondary">Přidat zakázku</button>
+            </form>
+            
+            <h3>Existující zakázky:</h3>
+            <!-- Seznam zakázek se vygeneruje zde -->
+            <ul id="project-list"></ul>
+        </div>
+
+        <!-- SEKCE 3: PŘEHLED ZÁZNAMŮ -->
+        <div class="card">
+            <h2>Historie záznamů</h2>
+            <!-- Sem se vypíší všechny uložené časy -->
+            <div id="entries-list">
+                <p>Zatím žádné záznamy.</p>
+            </div>
+            <!-- Tlačítka pro Export a Smazání historie -->
+            <button id="export-history" class="btn-export">Export do CSV (pro Excel)</button>
+            <button id="clear-history" class="btn-danger">Smazat historii</button>
+            <!-- Tlačítko pro úplný RESET -->
+            <button id="reset-application" class="btn-reset">RESET APLIKACE (Vše smazat)</button>
+        </div>
+
+    </div>
+
+    <!-- 
+      --- Sekce JavaScript (Logika aplikace) ---
+    -->
+    <script>
+    // Počkáme, až se načte celá HTML struktura
+    document.addEventListener('DOMContentLoaded', () => {
+
+        // --- PWA: Registrace Service Workeru ---
+        // Zkusí registraci Service Workeru, který zajistí offline funkčnost
+        if ('serviceWorker' in navigator) {
+            // FINÁLNÍ OPRAVA: Používáme nejjednodušší relativní cestu 'service-worker.js', 
+            // která je robustnější ve složitých prostředích (např. Canvas/Blob URL).
+            navigator.serviceWorker.register('service-worker.js') 
+                .then(reg => console.log('Service Worker zaregistrován!', reg))
+                .catch(err => console.error('Chyba registrace Service Workeru:', err));
+        }
+
+        // --- VÝBĚR PRVKŮ Z HTML ---
+        const projectForm = document.getElementById('project-form');
+        const newProjectNameInput = document.getElementById('new-project-name');
+        const projectList = document.getElementById('project-list');
+        const projectSelect = document.getElementById('project-select');
+        const entriesList = document.getElementById('entries-list');
+        const clearHistoryButton = document.getElementById('clear-history');
+        const exportHistoryButton = document.getElementById('export-history');
+        // Tlačítko pro reset aplikace
+        const resetApplicationButton = document.getElementById('reset-application');
+        
+        // Prvky pro START/END logiku
+        const toggleTrackingBtn = document.getElementById('toggle-tracking-btn');
+        const trackingStatus = document.getElementById('tracking-status');
+        
+
+        // --- NAČTENÍ DAT Z LOCALSTORAGE ---
+        let projects = JSON.parse(localStorage.getItem('projects')) || [];
+        let timeEntries = JSON.parse(localStorage.getItem('timeEntries')) || [];
+        // ActiveTracking uchovává, jestli je nějaká práce momentálně měřena
+        // Obsahuje objekt: { project: "Jméno Zakázky", start: "ISO čas" } nebo null
+        let activeTracking = JSON.parse(localStorage.getItem('activeTracking'));
+
+        // --- FUNKCE PRO ZAKÁZKY ---
+
+        function saveProjects() {
+            localStorage.setItem('projects', JSON.stringify(projects));
+        }
+
+        function renderProjects() {
+            // Uložíme si aktuálně vybranou hodnotu předtím, než se vymaže select
+            const currentSelection = projectSelect.value;
+            
+            projectList.innerHTML = '';
+            projectSelect.innerHTML = '';
+
+            if (projects.length === 0) {
+                projectSelect.innerHTML = '<option value="" disabled selected>Nejdříve přidejte zakázku</option>';
+            } else {
+                 // První volba, která není platná (placeholder)
+                 projectSelect.innerHTML = '<option value="" disabled>-- Vyberte zakázku --</option>';
+            }
+
+            projects.forEach((project, index) => {
+                const li = document.createElement('li');
+                li.textContent = project;
+                
+                const deleteButton = document.createElement('button');
+                deleteButton.textContent = 'Smazat';
+                deleteButton.dataset.index = index; 
+                // Zabráníme smazání zakázky, pokud se na ní aktivně pracuje
+                deleteButton.disabled = (activeTracking && activeTracking.project === project);
+                // Nastavíme funkci pro smazání
+                deleteButton.onclick = deleteProject;
+                
+                li.appendChild(deleteButton);
+                projectList.appendChild(li);
+
+                const option = document.createElement('option');
+                option.value = project;
+                option.textContent = project;
+                projectSelect.appendChild(option);
+            });
+            
+            // Důležité: Nastavíme select, pokud je aktivní měření
+            if (activeTracking) {
+                projectSelect.value = activeTracking.project;
+                projectSelect.disabled = true; // Zablokujeme změnu zakázky
+            } else {
+                 projectSelect.disabled = false; // Povolíme změnu zakázky
+                 
+                 // Logika obnovy výběru
+                 if (currentSelection && projects.includes(currentSelection)) {
+                    projectSelect.value = currentSelection;
+                 } 
+                 else if (projects.length > 0) {
+                     projectSelect.value = projects[0];
+                 } else {
+                     projectSelect.value = ""; 
+                 }
+            }
+        }
+
+        function addProject(event) {
+            event.preventDefault(); 
+            const projectName = newProjectNameInput.value.trim();
+
+            if (projectName && !projects.includes(projectName)) {
+                projects.push(projectName);
+                projects.sort(); 
+                saveProjects();
+                renderProjects(); 
+                updateTrackingUI(); 
+                newProjectNameInput.value = ''; 
+            } else if (projects.includes(projectName)) {
+                // Místo alertu použijeme console.warn
+                console.warn('Upozornění: Tato zakázka již existuje.');
+            }
+        }
+
+        function deleteProject(event) {
+            const indexToDelete = event.target.dataset.index;
+            const projectName = projects[indexToDelete];
+            
+            // Odstraněn confirm(), akce je provedena okamžitě po kliknutí
+            console.log(`MAŽU ZAKÁZKU: "${projectName}" a VŠECHNY JÍ PŘIŘAZENÉ ZÁZNAMY. AKCE JE NEVRATNÁ.`);
+            
+            projects.splice(indexToDelete, 1);
+            saveProjects(); // Uložíme zbytek projektů
+            
+            renderProjects();
+            
+            // Smažeme všechny záznamy spojené s touto zakázkou
+            timeEntries = timeEntries.filter(entry => entry.project !== projectName);
+            localStorage.setItem('timeEntries', JSON.stringify(timeEntries)); // Uložíme očištěnou historii
+            renderTimeEntries(); 
+            
+            updateTrackingUI(); 
+        }
+        
+        // --- FUNKCE PRO TRACKOVÁNÍ (START/END) ---
+
+        // Aktualizuje vzhled tlačítka a stavového pole
+        function updateTrackingUI() {
+            if (activeTracking) {
+                // Stav: MĚŘENÍ JE AKTIVNÍ
+                
+                // 1. Tlačítko: Nastavíme na END
+                toggleTrackingBtn.textContent = 'UKONČIT MĚŘENÍ (END)';
+                toggleTrackingBtn.className = 'btn-end';
+                toggleTrackingBtn.disabled = false;
+                
+                // 2. Stavové pole: Zobrazíme info
+                const startTime = new Date(activeTracking.start);
+                const options = { hour: '2-digit', minute: '2-digit', second: '2-digit' };
+                
+                trackingStatus.innerHTML = `Měření aktivní: <strong>${activeTracking.project}</strong> <br> Začátek: ${startTime.toLocaleString('cs-CZ', options)}`;
+                trackingStatus.classList.add('tracking-active');
+                
+                // 3. Select: Zablokujeme
+                projectSelect.value = activeTracking.project;
+                projectSelect.disabled = true;
+
+            } else {
+                // Stav: MĚŘENÍ JE NEAKTIVNÍ
+                
+                // 1. Tlačítko: Nastavíme na START
+                toggleTrackingBtn.textContent = 'START MĚŘENÍ';
+                toggleTrackingBtn.className = 'btn-start';
+                trackingStatus.classList.remove('tracking-active');
+                
+                // 2. Zkontrolujeme, zda existují projekty A zda je nějaký vybrán
+                if (projects.length === 0) {
+                    toggleTrackingBtn.disabled = true;
+                    trackingStatus.textContent = 'Nejdříve přidejte zakázku!';
+                    trackingStatus.classList.add('tracking-active'); // Zobrazíme jako upozornění
+                } else if (!projectSelect.value) {
+                    toggleTrackingBtn.disabled = true;
+                    trackingStatus.textContent = 'Prosím, vyberte zakázku.';
+                    trackingStatus.classList.add('tracking-active');
+                } else {
+                    toggleTrackingBtn.disabled = false;
+                    trackingStatus.classList.remove('tracking-active');
+                }
+                
+                // 3. Select: Povolíme
+                projectSelect.disabled = false;
+            }
+            
+            // Při každé změně stavu aktualizujeme i seznam zakázek (kvůli disable tlačítku Smazat)
+            renderProjects();
+        }
+
+
+        function toggleTracking() {
+            if (!activeTracking) {
+                // --- LOGIKA START ---
+                
+                const selectedProject = projectSelect.value;
+                if (!selectedProject) {
+                    // Místo alertu použijeme console.warn
+                    console.warn('Prosím, vyberte zakázku, než začnete měřit.');
+                    return;
+                }
+                
+                // Zaznamenáme start a aktuální zakázku
+                activeTracking = {
+                    project: selectedProject,
+                    start: new Date().toISOString()
+                };
+                
+                // Uložíme aktivní měření
+                localStorage.setItem('activeTracking', JSON.stringify(activeTracking));
+                
+            } else {
+                // --- LOGIKA END ---
+                
+                const endTime = new Date();
+                const startTime = new Date(activeTracking.start);
+                
+                if (endTime <= startTime) {
+                    // Místo alertu použijeme console.error
+                    console.error('Konec nemůže být před začátkem! Chyba v systému.');
+                    return;
+                }
+                
+                // VÝPOČET MINUT
+                const diffMs = endTime.getTime() - startTime.getTime();
+                const diffMins = Math.round(diffMs / 60000); 
+
+                // Vytvoříme nový záznam
+                const newEntry = {
+                    project: activeTracking.project,
+                    start: activeTracking.start, // Uložíme jako ISO string
+                    end: endTime.toISOString(),
+                    minutes: diffMins
+                };
+                
+                // Uložíme záznam do historie
+                timeEntries.push(newEntry);
+                localStorage.setItem('timeEntries', JSON.stringify(timeEntries));
+                renderTimeEntries();
+                
+                // Vyčistíme aktivní měření
+                activeTracking = null;
+                localStorage.removeItem('activeTracking');
+            }
+            
+            // Aktualizujeme UI po změně stavu
+            updateTrackingUI();
+        }
+
+        // --- FUNKCE PRO ČASOVÉ ZÁZNAMY ---
+        
+        function saveTimeEntries() {
+            localStorage.setItem('timeEntries', JSON.stringify(timeEntries));
+        }
+
+        function renderTimeEntries() {
+            entriesList.innerHTML = '';
+
+            if (timeEntries.length === 0) {
+                entriesList.innerHTML = '<p>Zatím žádné záznamy.</p>';
+                // Zakážeme tlačítko Export, pokud nejsou data
+                exportHistoryButton.disabled = true;
+                return;
+            }
+            
+            // Povolíme tlačítko Export
+            exportHistoryButton.disabled = false;
+
+            const sortedEntries = timeEntries.slice().reverse();
+
+            sortedEntries.forEach(entry => {
+                const entryDiv = document.createElement('div');
+                entryDiv.className = 'entry-item';
+                
+                const start = new Date(entry.start);
+                const end = new Date(entry.end);
+                
+                // Formátování data/času pro lepší čitelnost
+                const options = { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' };
+                const timeDiffHours = (entry.minutes / 60).toFixed(2); // Převedeme na hodiny s přesností na 2 desetinná místa
+
+                entryDiv.innerHTML = `
+                    <strong>${entry.project}</strong> (${entry.minutes} minut / ${timeDiffHours} hodiny)
+                    <p>Začátek: ${start.toLocaleString('cs-CZ', options)}</p>
+                    <p>Konec: ${end.toLocaleString('cs-CZ', options)}</p>
+                `;
+                entriesList.appendChild(entryDiv);
+            });
+        }
+
+        function clearHistory() {
+            // ODSTRANĚNÍ HISTORIE:
+            console.log('MAŽU VŠECHNY ZÁZNAMY ČASU (Historie). AKCE JE NEVRATNÁ.');
+            timeEntries = [];
+            localStorage.removeItem('timeEntries'); // Vyčistí localStorage
+            renderTimeEntries(); // Vykreslí prázdnou historii
+        }
+        
+        // --- FUNKCE: RESET APLIKACE (Všechno smazat) ---
+        function resetApplication() {
+            console.log('PROVÁDÍM ÚPLNÝ RESET APLIKACE. VŠECHNA DATA JSOU VYMAZÁNA Z PAMĚTI A LOCALSTORAGE.');
+
+            // 1. Vyčistíme Historii (Time Entries)
+            timeEntries = [];
+            localStorage.removeItem('timeEntries');
+            renderTimeEntries(); 
+
+            // 2. Vyčistíme Zakázky (Projects)
+            projects = [];
+            localStorage.removeItem('projects');
+            renderProjects(); 
+
+            // 3. Vyčistíme aktivní sledování (Active Tracking)
+            activeTracking = null;
+            localStorage.removeItem('activeTracking');
+            updateTrackingUI();
+            
+            console.log('RESET DOKONČEN. UI aplikace je aktualizováno.');
+        }
+
+        
+        // --- FUNKCE PRO EXPORT DAT DO CSV ---
+        
+        function exportToCSV() {
+            if (timeEntries.length === 0) {
+                // Místo alertu použijeme console.warn
+                console.warn('Upozornění: Historie je prázdná, nemůžu nic exportovat.');
+                return;
+            }
+            
+            // Hlavička CSV souboru (názvy sloupců)
+            const header = ['Zakazka', 'Start_ISO', 'Konec_ISO', 'Cas_Minuty', 'Cas_Hodiny'].join(';');
+            
+            // Mapování dat
+            const csvRows = timeEntries.map(entry => {
+                const start = new Date(entry.start);
+                const end = new Date(entry.end);
+                
+                // Převedeme minuty na hodiny pro export
+                const hours = (entry.minutes / 60).toFixed(2).replace('.', ','); // Používáme čárku jako desetinný oddělovač pro Excel v ČR/SR
+                
+                // Zde používáme ISO formát pro přesnost a k tomu přidáme lokální formát
+                const row = [
+                    `"${entry.project}"`, // Uvozovky pro název zakázky, pokud obsahuje čárky nebo speciální znaky
+                    `"${start.toLocaleString('cs-CZ')}"`, // Lokální datum a čas START
+                    `"${end.toLocaleString('cs-CZ')}"`,   // Lokální datum a čas END
+                    entry.minutes,
+                    hours
+                ];
+                return row.join(';'); // Oddělovačem je středník (';'), což je typické pro Excel v ČR
+            }).join('\n'); // Každý záznam na novém řádku
+
+            const csvContent = header + '\n' + csvRows;
+            
+            // --- Logika stahování souboru ---
+            
+            // Vytvoříme 'Blob' s obsahem a správným MIME typem
+            const blob = new Blob(["\ufeff", csvContent], { type: 'text/csv;charset=utf-8;' });
+            
+            // Vytvoříme dočasný odkaz
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = 'timesheet.csv'; // Jméno souboru
+            
+            // Simulujeme kliknutí na odkaz a stáhneme soubor
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            // Místo alertu použijeme console.log
+            console.log('Export dat dokončen! Soubor timesheet.csv byl stažen.');
+        }
+
+
+        // --- SPOUŠTĚČE (EVENT LISTENERS) ---
+        projectForm.addEventListener('submit', addProject);
+        // Toggle button nahrazuje původní submit formuláře
+        toggleTrackingBtn.addEventListener('click', toggleTracking);
+        clearHistoryButton.addEventListener('click', clearHistory);
+        exportHistoryButton.addEventListener('click', exportToCSV);
+        // Spouštěč pro Reset aplikace
+        resetApplicationButton.addEventListener('click', resetApplication);
+        
+        // Aktualizujeme UI po každé změně výběru zakázky, pokud se zrovna netrackuje
+        projectSelect.addEventListener('change', updateTrackingUI);
+
+        // --- PRVNÍ SPUŠTĚNÍ ---
+        renderProjects();
+        renderTimeEntries();
+        updateTrackingUI(); // Důležité: Nastaví stav tlačítka START/END a selectu hned po načtení
+    });
+    </script>
+</body>
+</html>

@@ -1,0 +1,6 @@
+{
+  "appId": "com.casosber.app",
+  "appName": "Časosběr",
+  "webDir": "build",
+  "bundledWebRuntime": false
+}

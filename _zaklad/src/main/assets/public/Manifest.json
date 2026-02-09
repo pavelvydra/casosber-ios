@@ -1,0 +1,21 @@
+{
+"name": "Time Tracker PWA",
+"short_name": "Tracker",
+"description": "Jednoduchý time tracker pro sledování zakázek a času.",
+"start_url": "/",
+"display": "standalone",
+"background_color": "#f4f7f6",
+"theme_color": "#005a9c",
+"icons": [
+{
+"src": "https://www.google.com/search?q=https://placehold.co/192x192/005a9c/ffffff%3Ftext%3DTR",
+"sizes": "192x192",
+"type": "image/png"
+},
+{
+"src": "https://www.google.com/search?q=https://placehold.co/512x512/005a9c/ffffff%3Ftext%3DTR",
+"sizes": "512x512",
+"type": "image/png"
+}
+]
+}
