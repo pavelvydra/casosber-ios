@@ -1,6 +1,6 @@
 name: Build iOS App
 on:
-  workflow_dispatch: # To nám umožní spustit build ručně tlačítkem
+  workflow_dispatch:
 
 jobs:
   build:
@@ -13,14 +13,16 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: 'npm' # Zrychlí další buildy
 
       - name: Install Dependencies
         run: |
           npm install
-          npm install @capacitor/ios
+          npm install @capacitor/cli @capacitor/core @capacitor/ios
 
       - name: Sync Capacitor
-        run: npx cap sync ios
+        run: |
+          npx capacitor sync ios
 
       - name: Build iOS Archive
         run: |
@@ -31,4 +33,4 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY="" \
-            archive  
+            archive
