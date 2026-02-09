@@ -1,0 +1,28 @@
+name: Build iOS App
+on:
+  workflow_dispatch: # To nám umožní spustit build ručně tlačítkem
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Dependencies
+        run: |
+          npm install
+          npm install @capacitor/ios
+
+      - name: Sync Capacitor
+        run: npx cap sync ios
+
+      - name: Build iOS Archive
+        run: |
+          cd ios/App
+          xcodebuild -scheme App -destination 'generic/platform=iOS' -archivePath App.xcarchive archive
