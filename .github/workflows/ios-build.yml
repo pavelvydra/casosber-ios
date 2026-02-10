@@ -1,4 +1,4 @@
-name: Build iOS App (Final Fix)
+name: Build iOS App (Final Version 14)
 on:
   workflow_dispatch:
 
@@ -19,31 +19,23 @@ jobs:
           npm install
           npm install @capacitor/cli @capacitor/core @capacitor/ios
           
-          # 1. Najdeme, kde se skutečně nachází index.html (vynecháme systémové složky)
+          # Najdeme index.html
           REAL_WEB_PATH=$(find . -name "index.html" -not -path "*/ios/*" -not -path "*/node_modules/*" | head -n 1)
-          
-          if [ -z "$REAL_WEB_PATH" ]; then
-            echo "KRITICKÁ CHYBA: Soubor index.html v repozitáři neexistuje!"
-            exit 1
-          fi
-          
-          # 2. Zjistíme složku, ve které index.html leží
           REAL_WEB_DIR=$(dirname "$REAL_WEB_PATH")
-          echo "Webové soubory nalezeny v: $REAL_WEB_DIR"
           
-          # 3. Vytvoříme čistou složku build_web a zkopírujeme tam obsah
           mkdir -p build_web
           cp -r "$REAL_WEB_DIR"/. build_web/
           
-          # 4. Kontrola pro jistotu (uvidíš v logu)
-          ls -la build_web/index.html
-          
-          # 5. Zápis konfigurace
           echo '{"appId": "com.casosber.app", "appName": "Casosber", "webDir": "build_web"}' > capacitor.config.json
 
-      - name: Capacitor Sync
+      - name: Capacitor Sync and Fix Version
         run: |
           npx capacitor add ios || true
+          
+          # OPRAVA VERZE: Přepíšeme deployment target na 14.0 v Podfile i v projektu
+          sed -i '' "s/platform :ios, '13.0'/platform :ios, '14.0'/g" ios/App/Podfile
+          sed -i '' 's/IPHONEOS_DEPLOYMENT_TARGET = 13.0/IPHONEOS_DEPLOYMENT_TARGET = 14.0/g' ios/App/App.xcodeproj/project.pbxproj
+          
           npx capacitor sync ios
 
       - name: Xcode Compile (Debug Mode)
