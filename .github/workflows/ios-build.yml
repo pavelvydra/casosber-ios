@@ -1,4 +1,4 @@
-name: Build iOS App (Professional)
+name: Build iOS App (Final Professional)
 on:
   workflow_dispatch:
 
@@ -16,19 +16,18 @@ jobs:
 
       - name: Install & Prepare Web Assets
         run: |
+          # 1. Instalace nástrojů
           npm install
           npm install @capacitor/cli @capacitor/core @capacitor/ios
           
-          # OPRAVA CHYBY Z OBRÁZKU 0000dc.png:
-          # Vytvoříme složku, kterou Capacitor vyžaduje
+          # 2. OPRAVA index.html: Vytvoříme složku, kterou Capacitor chce
           mkdir -p build_web
           
-          # OPRAVA SMYČKY Z OBRÁZKU f5f8d9.png:
-          # Použijeme rsync, abychom bezpečně zkopírujali jen webové soubory
-          # a vyhnuli se kopírování složky do sebe samé
+          # 3. OPRAVA SMYČKY: Použijeme rsync, abychom bezpečně zkopírovali web
+          # a vyhnuli se nekonečnému kopírování z tvého obrázku
           rsync -av --exclude='ios' --exclude='build_web' --exclude='.git' . build_web/
           
-          # Vytvoříme čistou konfiguraci
+          # 4. KONFIGURACE: Ukážeme Capacitoru na správné místo
           echo '{"appId": "com.casosber.app", "appName": "Casosber", "webDir": "build_web"}' > capacitor.config.json
 
       - name: Capacitor Sync
@@ -39,11 +38,11 @@ jobs:
       - name: Xcode Compile (Debug Mode)
         run: |
           cd ios/App
-          # Zkompilujeme skutečný kód aplikace (trvá cca 5-10 min)
+          # OPRAVA 6h ZÁSEKU: Vypneme indexování a certifikáty
           xcodebuild build -scheme App \
             -destination 'generic/platform=iOS' \
             -configuration Debug \
-            -derivedDataPath output_folder \
+            -derivedDataPath xcode_output \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY="" \
@@ -51,9 +50,9 @@ jobs:
 
       - name: Final Packaging for Sideloadly
         run: |
-          # Vytvoříme finální strukturu, kterou Sideloadly vyžaduje
+          # OPRAVA CESTY: Vše děláme uvnitř složky projektu (žádné ..)
           mkdir -p deploy/Payload
-          cp -r ios/App/output_folder/Build/Products/Debug-iphoneos/App.app deploy/Payload/
+          cp -r ios/App/xcode_output/Build/Products/Debug-iphoneos/App.app deploy/Payload/
 
       - name: Upload Finished App
         uses: actions/upload-artifact@v4
