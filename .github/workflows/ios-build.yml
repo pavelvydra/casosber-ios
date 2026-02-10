@@ -19,15 +19,16 @@ jobs:
           npm install
           npm install @capacitor/cli @capacitor/core @capacitor/ios
           
-          # VYŘEŠENÍ CHYBY Z OBRÁZKU 0000dc.png:
+          # OPRAVA CHYBY Z OBRÁZKU 0000dc.png:
           # Vytvoříme složku, kterou Capacitor vyžaduje
           mkdir -p build_web
           
-          # Bezpečně zkopírujeme index.html a vše ostatní do build_web
-          # Použijeme rsync, abychom se vyhnuli smyčce z obrázku f5f8d9.png
+          # OPRAVA SMYČKY Z OBRÁZKU f5f8d9.png:
+          # Použijeme rsync, abychom bezpečně zkopírujali jen webové soubory
+          # a vyhnuli se kopírování složky do sebe samé
           rsync -av --exclude='ios' --exclude='build_web' --exclude='.git' . build_web/
           
-          # Vytvoříme konfiguraci, která na tuto složku ukazuje
+          # Vytvoříme čistou konfiguraci
           echo '{"appId": "com.casosber.app", "appName": "Casosber", "webDir": "build_web"}' > capacitor.config.json
 
       - name: Capacitor Sync
@@ -35,10 +36,10 @@ jobs:
           npx capacitor add ios || true
           npx capacitor sync ios
 
-      - name: Xcode Compile (Debug)
+      - name: Xcode Compile (Debug Mode)
         run: |
           cd ios/App
-          # Zkompilujeme skutečný kód aplikace
+          # Zkompilujeme skutečný kód aplikace (trvá cca 5-10 min)
           xcodebuild build -scheme App \
             -destination 'generic/platform=iOS' \
             -configuration Debug \
@@ -50,7 +51,7 @@ jobs:
 
       - name: Final Packaging for Sideloadly
         run: |
-          # Vytvoříme finální strukturu, kterou Sideloadly miluje
+          # Vytvoříme finální strukturu, kterou Sideloadly vyžaduje
           mkdir -p deploy/Payload
           cp -r ios/App/output_folder/Build/Products/Debug-iphoneos/App.app deploy/Payload/
 
