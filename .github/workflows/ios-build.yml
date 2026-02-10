@@ -1,4 +1,4 @@
-name: Build iOS App
+name: Build iOS App (Full Version)
 on:
   workflow_dispatch:
 
@@ -9,39 +9,47 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Create Minimal App
-        run: |
-          # 1. Vytvoříme strukturu pro export (Payload je nutný pro .ipa)
-          mkdir -p final_export/Payload/App.app
-          
-          # 2. Zkopírujeme webové soubory (index.html a zbytek) do složky aplikace
-          # Vynecháme systémové složky, aby nevznikla nekonečná smyčka
-          rsync -av --exclude='.git' --exclude='.github' --exclude='ios' --exclude='final_export' . final_export/Payload/App.app/
-          
-          # 3. Vytvoříme Info.plist (soubor, bez kterého se aplikace nespustí)
-          echo '<?xml version="1.0" encoding="UTF-8"?>
-          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-          <plist version="1.0">
-          <dict>
-            <key>CFBundleExecutable</key>
-            <string>App</string>
-            <key>CFBundleIdentifier</key>
-            <string>com.casosber.app</string>
-            <key>CFBundleName</key>
-            <string>Casosber</string>
-            <key>CFBundlePackageType</key>
-            <string>APPL</string>
-            <key>CFBundleShortVersionString</key>
-            <string>1.0</string>
-            <key>LSRequiresIPhoneOS</key>
-            <true/>
-            <key>MinimumOSVersion</key>
-            <string>12.0</string>
-          </dict>
-          </plist>' > final_export/Payload/App.app/Info.plist
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
 
-      - name: Upload for Sideloadly
+      - name: Install & Prepare Web
+        run: |
+          npm install
+          npm install @capacitor/cli @capacitor/core @capacitor/ios
+          # Vytvoříme složku build a dáme do ní web (bezpečným způsobem)
+          mkdir -p build_web
+          rsync -av --exclude='ios' --exclude='build_web' . build_web/
+          
+          # Vytvoříme čistou konfiguraci
+          echo '{"appId": "com.casosber.app", "appName": "Casosber", "webDir": "build_web"}' > capacitor.config.json
+
+      - name: Capacitor Sync
+        run: |
+          npx capacitor add ios || true
+          npx capacitor sync ios
+
+      - name: Build Xcode (Debug Mode)
+        run: |
+          cd ios/App
+          xcodebuild build -scheme App \
+            -destination 'generic/platform=iOS' \
+            -configuration Debug \
+            -derivedDataPath build_output \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            COMPILER_INDEX_STORE_ENABLE=NO
+
+      - name: Package for Sideloadly
+        run: |
+          mkdir -p final_export/Payload
+          # Tady kopírujeme skutečný zkompilovaný binární soubor z Xcode
+          cp -r ios/App/build_output/Build/Products/Debug-iphoneos/App.app final_export/Payload/
+
+      - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ios-app-package
+          name: ios-app-real
           path: final_export/
