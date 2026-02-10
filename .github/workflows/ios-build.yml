@@ -9,15 +9,16 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Create Minimal App
+       - name: Create Minimal App
         run: |
-          # Vytvoříme složku mimo dosah hledání
-          mkdir -p ../output_app/App.app
+          # 1. Vytvoříme si čistý prostor pro export
+          mkdir -p final_export/Payload/App.app
           
-          # Zkopírujeme webové soubory (vynecháme složku ios a .git)
-          cp -r . ../output_app/App.app/
+          # 2. Zkopírujeme webové soubory přímo do složky aplikace
+          # Použijeme rsync, který je bezpečnější než find
+          rsync -av --exclude='.git' --exclude='ios' --exclude='final_export' . final_export/Payload/App.app/
           
-          # Vytvoříme Info.plist v cílové složce
+          # 3. Vytvoříme Info.plist (občanka aplikace)
           echo '<?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
           <plist version="1.0">
@@ -32,10 +33,16 @@ jobs:
             <string>APPL</string>
             <key>CFBundleShortVersionString</key>
             <string>1.0</string>
+            <key>LSRequiresIPhoneOS</key>
+            <true/>
           </dict>
-          </plist>' > ../output_app/App.app/Info.plist
+          </plist>' > final_export/Payload/App.app/Info.plist
 
       - name: Upload for Sideloadly
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-app-ipa
+          path: final_export/
         uses: actions/upload-artifact@v4
         with:
           name: ios-app-package
