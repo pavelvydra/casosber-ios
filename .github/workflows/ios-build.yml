@@ -11,14 +11,14 @@ jobs:
 
       - name: Create Minimal App
         run: |
-          # 1. Vytvoříme si čistý prostor pro export
+          # 1. Vytvoříme strukturu pro export (Payload je nutný pro .ipa)
           mkdir -p final_export/Payload/App.app
           
-          # 2. Zkopírujeme webové soubory přímo do složky aplikace
-          # Použijeme rsync, který je bezpečnější než find
-          rsync -av --exclude='.git' --exclude='ios' --exclude='final_export' . final_export/Payload/App.app/
+          # 2. Zkopírujeme webové soubory (index.html a zbytek) do složky aplikace
+          # Vynecháme systémové složky, aby nevznikla nekonečná smyčka
+          rsync -av --exclude='.git' --exclude='.github' --exclude='ios' --exclude='final_export' . final_export/Payload/App.app/
           
-          # 3. Vytvoříme Info.plist (občanka aplikace)
+          # 3. Vytvoříme Info.plist (soubor, bez kterého se aplikace nespustí)
           echo '<?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
           <plist version="1.0">
@@ -35,15 +35,13 @@ jobs:
             <string>1.0</string>
             <key>LSRequiresIPhoneOS</key>
             <true/>
+            <key>MinimumOSVersion</key>
+            <string>12.0</string>
           </dict>
           </plist>' > final_export/Payload/App.app/Info.plist
 
       - name: Upload for Sideloadly
         uses: actions/upload-artifact@v4
         with:
-          name: ios-app-ipa
-          path: final_export/
-        uses: actions/upload-artifact@v4
-        with:
           name: ios-app-package
-          path: ../output_app/App.app
+          path: final_export/
