@@ -9,7 +9,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-       - name: Create Minimal App
+      - name: Create Minimal App
         run: |
           # 1. Vytvoříme si čistý prostor pro export
           mkdir -p final_export/Payload/App.app
