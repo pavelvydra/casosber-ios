@@ -9,28 +9,34 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - name: Create Minimal App
+        run: |
+          # Vytvoříme strukturu aplikace ručně bez Capacitoru
+          mkdir -p App.app
+          
+          # Najdeme tvůj index.html a zkopírujeme ho do složky aplikace
+          find . -name "index.html" -exec cp -r $(dirname {})/. App.app/ \;
+          
+          # Vytvoříme základní info soubor, který iOS vyžaduje
+          echo '<?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>CFBundleExecutable</key>
+            <string>App</string>
+            <key>CFBundleIdentifier</key>
+            <string>com.casosber.app</string>
+            <key>CFBundleName</key>
+            <string>Casosber</string>
+            <key>CFBundlePackageType</key>
+            <string>APPL</string>
+            <key>CFBundleShortVersionString</key>
+            <string>1.0</string>
+          </dict>
+          </plist>' > App.app/Info.plist
+
+      - name: Upload for Sideloadly
+        uses: actions/upload-artifact@v4
         with:
-          node-version: 20
-
-      - name: Prepare Project
-        run: |
-          npm install
-          npm install @capacitor/cli @capacitor/core @capacitor/ios
-          mkdir -p build
-          find . -name "index.html" -exec cp -r $(dirname {})/. build/ \;
-          echo '{"appId": "com.casosber.app", "appName": "Casosber", "webDir": "build"}' > capacitor.config.json
-          npx capacitor add ios || true
-          npx capacitor sync ios
-
-      - name: Build App (Super-Fast)
-        run: |
-          cd ios/App
-          # Jen základní build bez zbytečných analýz a s vypnutým podepisováním
-          xcodebuild build -scheme App \
-            -destination 'generic/platform=iOS' \
-            -configuration Debug \
-            -xcconfig <(echo "CODE_SIGNING_ALLOWED=NO; CODE_SIGNING_REQUIRED=NO; CODE_SIGN_IDENTITY=; PROVISIONING_PROFILE_SPECIFIER=;") \
-            COMPILER_INDEX_STORE_ENABLE=NO \
-            | xcbeautify || xcodebuild build -scheme App -destination 'generic/platform=iOS' -configuration Debug CODE_SIGNING_ALLOWED=NO
+          name: ios-app-package
+          path: App.app
