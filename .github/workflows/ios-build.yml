@@ -13,51 +13,24 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'npm' # Zrychlí další buildy
 
-      - name: Install Dependencies
+      - name: Prepare Project
         run: |
           npm install
           npm install @capacitor/cli @capacitor/core @capacitor/ios
-
-      - name: Prepare Build Directory
-        run: |
-          # 1. Vytvoříme složku build
           mkdir -p build
-
-          # 2. Najdeme index.html a vše ostatní a zkopírujeme to do složky build
-          # Tento příkaz prohledá všechny složky a najde tvůj web
           find . -name "index.html" -exec cp -r $(dirname {})/. build/ \;
-
-          # 3. Vytvoříme konfigurační soubor
-          echo '{
-            "appId": "com.casosber.app",
-            "appName": "Casosber",
-            "webDir": "build"
-          }' > capacitor.config.json
-
-          # 4. Spustíme Capacitor
+          echo '{"appId": "com.casosber.app", "appName": "Casosber", "webDir": "build"}' > capacitor.config.json
           npx capacitor add ios || true
           npx capacitor sync ios
 
-      - name: Build iOS App (Debug Mode)
+      - name: Build App (Super-Fast)
         run: |
           cd ios/App
-          xcodebuild -scheme App \
-            -configuration Debug \
+          # Jen základní build bez zbytečných analýz a s vypnutým podepisováním
+          xcodebuild build -scheme App \
             -destination 'generic/platform=iOS' \
-            -derivedDataPath build_output \
-            CODE_SIGNING_ALLOWED=NO \
-            CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGN_IDENTITY="" \
-            build
-
-      - name: Upload Build Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: ios-app-debug
-          path: ios/App/build_output/Build/Products/Debug-iphoneos/App.app
-            CODE_SIGNING_ALLOWED=NO \
-            CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGN_IDENTITY="" \
-            archive
+            -configuration Debug \
+            -xcconfig <(echo "CODE_SIGNING_ALLOWED=NO; CODE_SIGNING_REQUIRED=NO; CODE_SIGN_IDENTITY=; PROVISIONING_PROFILE_SPECIFIER=;") \
+            COMPILER_INDEX_STORE_ENABLE=NO \
+            | xcbeautify || xcodebuild build -scheme App -destination 'generic/platform=iOS' -configuration Debug CODE_SIGNING_ALLOWED=NO
