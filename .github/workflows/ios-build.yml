@@ -1,4 +1,4 @@
-name: Build iOS App (Professional)
+name: Build iOS App (Final Fix)
 on:
   workflow_dispatch:
 
@@ -14,19 +14,31 @@ jobs:
         with:
           node-version: 20
 
-      - name: Install & Prepare Web Assets
+      - name: Locate and Prepare Web Assets
         run: |
           npm install
           npm install @capacitor/cli @capacitor/core @capacitor/ios
           
-          # OPRAVA index.html: Vytvoříme složku, kterou Capacitor vyžaduje
+          # 1. Najdeme, kde se skutečně nachází index.html (vynecháme systémové složky)
+          REAL_WEB_PATH=$(find . -name "index.html" -not -path "*/ios/*" -not -path "*/node_modules/*" | head -n 1)
+          
+          if [ -z "$REAL_WEB_PATH" ]; then
+            echo "KRITICKÁ CHYBA: Soubor index.html v repozitáři neexistuje!"
+            exit 1
+          fi
+          
+          # 2. Zjistíme složku, ve které index.html leží
+          REAL_WEB_DIR=$(dirname "$REAL_WEB_PATH")
+          echo "Webové soubory nalezeny v: $REAL_WEB_DIR"
+          
+          # 3. Vytvoříme čistou složku build_web a zkopírujeme tam obsah
           mkdir -p build_web
+          cp -r "$REAL_WEB_DIR"/. build_web/
           
-          # OPRAVA NEKONEČNÉ SMYČKY: Použijeme rsync, abychom bezpečně zkopírovali web
-          # a vyhnuli se kopírování složky do sebe samé (exclude)
-          rsync -av --exclude='ios' --exclude='build_web' --exclude='.git' . build_web/
+          # 4. Kontrola pro jistotu (uvidíš v logu)
+          ls -la build_web/index.html
           
-          # KONFIGURACE: Ukážeme Capacitoru na správnou složku
+          # 5. Zápis konfigurace
           echo '{"appId": "com.casosber.app", "appName": "Casosber", "webDir": "build_web"}' > capacitor.config.json
 
       - name: Capacitor Sync
@@ -37,7 +49,6 @@ jobs:
       - name: Xcode Compile (Debug Mode)
         run: |
           cd ios/App
-          # OPRAVA 6h ZÁSEKU: Vypneme indexování a vynucené certifikáty
           xcodebuild build -scheme App \
             -destination 'generic/platform=iOS' \
             -configuration Debug \
@@ -49,7 +60,6 @@ jobs:
 
       - name: Package for Sideloadly
         run: |
-          # OPRAVA CESTY: Všechno děláme uvnitř složky bez ".."
           mkdir -p final_ipa/Payload
           cp -r ios/App/build_output/Build/Products/Debug-iphoneos/App.app final_ipa/Payload/
 
