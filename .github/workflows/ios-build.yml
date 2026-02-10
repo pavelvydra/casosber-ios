@@ -1,4 +1,4 @@
-name: Build iOS App (Final Version 14)
+name: Build iOS App (Definitive Fix)
 on:
   workflow_dispatch:
 
@@ -19,7 +19,7 @@ jobs:
           npm install
           npm install @capacitor/cli @capacitor/core @capacitor/ios
           
-          # Najdeme index.html
+          # Najdeme index.html (tento krok už funguje)
           REAL_WEB_PATH=$(find . -name "index.html" -not -path "*/ios/*" -not -path "*/node_modules/*" | head -n 1)
           REAL_WEB_DIR=$(dirname "$REAL_WEB_PATH")
           
@@ -28,14 +28,22 @@ jobs:
           
           echo '{"appId": "com.casosber.app", "appName": "Casosber", "webDir": "build_web"}' > capacitor.config.json
 
-      - name: Capacitor Sync and Fix Version
+      - name: Capacitor Sync and Version Force
         run: |
+          # 1. Přidáme iOS projekt (i když selže sync, složky se vytvoří)
           npx capacitor add ios || true
           
-          # OPRAVA VERZE: Přepíšeme deployment target na 14.0 v Podfile i v projektu
-          sed -i '' "s/platform :ios, '13.0'/platform :ios, '14.0'/g" ios/App/Podfile
-          sed -i '' 's/IPHONEOS_DEPLOYMENT_TARGET = 13.0/IPHONEOS_DEPLOYMENT_TARGET = 14.0/g' ios/App/App.xcodeproj/project.pbxproj
+          # 2. OPRAVA VERZE NA 15.0 (Regulární výrazy, aby se trefily do čehokoliv)
+          # Oprava v Podfile (pro CocoaPods)
+          sed -i '' "s/platform :ios, '[^']*'/platform :ios, '15.0'/g" ios/App/Podfile
           
+          # Oprava v projektu (pro Xcode)
+          sed -i '' "s/IPHONEOS_DEPLOYMENT_TARGET = [^;]*/IPHONEOS_DEPLOYMENT_TARGET = 15.0/g" ios/App/App.xcodeproj/project.pbxproj
+          
+          # 3. Kontrolní výpis (uvidíme v logu, jestli se to přepsalo)
+          grep "platform :ios" ios/App/Podfile
+          
+          # 4. Teď už ostrý sync, který teď už musí projít
           npx capacitor sync ios
 
       - name: Xcode Compile (Debug Mode)
