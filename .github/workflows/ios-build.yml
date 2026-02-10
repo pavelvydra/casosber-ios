@@ -11,13 +11,13 @@ jobs:
 
       - name: Create Minimal App
         run: |
-          # Vytvoříme strukturu aplikace ručně bez Capacitoru
-          mkdir -p App.app
+          # Vytvoříme složku mimo dosah hledání
+          mkdir -p ../output_app/App.app
           
-          # Najdeme tvůj index.html a zkopírujeme ho do složky aplikace
-          find . -name "index.html" -exec cp -r $(dirname {})/. App.app/ \;
+          # Zkopírujeme webové soubory (vynecháme složku ios a .git)
+          cp -r . ../output_app/App.app/
           
-          # Vytvoříme základní info soubor, který iOS vyžaduje
+          # Vytvoříme Info.plist v cílové složce
           echo '<?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
           <plist version="1.0">
@@ -33,10 +33,10 @@ jobs:
             <key>CFBundleShortVersionString</key>
             <string>1.0</string>
           </dict>
-          </plist>' > App.app/Info.plist
+          </plist>' > ../output_app/App.app/Info.plist
 
       - name: Upload for Sideloadly
         uses: actions/upload-artifact@v4
         with:
           name: ios-app-package
-          path: App.app
+          path: ../output_app/App.app
