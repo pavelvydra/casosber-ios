@@ -40,12 +40,23 @@ jobs:
           npx capacitor add ios || true
           npx capacitor sync ios
 
-      - name: Build iOS Archive
+      - name: Build iOS App (Debug Mode)
         run: |
           cd ios/App
           xcodebuild -scheme App \
+            -configuration Debug \
             -destination 'generic/platform=iOS' \
-            -archivePath App.xcarchive \
+            -derivedDataPath build_output \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            build
+
+      - name: Upload Build Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-app-debug
+          path: ios/App/build_output/Build/Products/Debug-iphoneos/App.app
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY="" \
