@@ -1,4 +1,4 @@
-name: Build iOS App (Final Professional)
+name: Build iOS App (Professional)
 on:
   workflow_dispatch:
 
@@ -16,18 +16,17 @@ jobs:
 
       - name: Install & Prepare Web Assets
         run: |
-          # 1. Instalace nástrojů
           npm install
           npm install @capacitor/cli @capacitor/core @capacitor/ios
           
-          # 2. OPRAVA index.html: Vytvoříme složku, kterou Capacitor chce
+          # OPRAVA index.html: Vytvoříme složku, kterou Capacitor vyžaduje
           mkdir -p build_web
           
-          # 3. OPRAVA SMYČKY: Použijeme rsync, abychom bezpečně zkopírovali web
-          # a vyhnuli se nekonečnému kopírování z tvého obrázku
+          # OPRAVA NEKONEČNÉ SMYČKY: Použijeme rsync, abychom bezpečně zkopírovali web
+          # a vyhnuli se kopírování složky do sebe samé (exclude)
           rsync -av --exclude='ios' --exclude='build_web' --exclude='.git' . build_web/
           
-          # 4. KONFIGURACE: Ukážeme Capacitoru na správné místo
+          # KONFIGURACE: Ukážeme Capacitoru na správnou složku
           echo '{"appId": "com.casosber.app", "appName": "Casosber", "webDir": "build_web"}' > capacitor.config.json
 
       - name: Capacitor Sync
@@ -38,24 +37,24 @@ jobs:
       - name: Xcode Compile (Debug Mode)
         run: |
           cd ios/App
-          # OPRAVA 6h ZÁSEKU: Vypneme indexování a certifikáty
+          # OPRAVA 6h ZÁSEKU: Vypneme indexování a vynucené certifikáty
           xcodebuild build -scheme App \
             -destination 'generic/platform=iOS' \
             -configuration Debug \
-            -derivedDataPath xcode_output \
+            -derivedDataPath build_output \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY="" \
             COMPILER_INDEX_STORE_ENABLE=NO
 
-      - name: Final Packaging for Sideloadly
+      - name: Package for Sideloadly
         run: |
-          # OPRAVA CESTY: Vše děláme uvnitř složky projektu (žádné ..)
-          mkdir -p deploy/Payload
-          cp -r ios/App/xcode_output/Build/Products/Debug-iphoneos/App.app deploy/Payload/
+          # OPRAVA CESTY: Všechno děláme uvnitř složky bez ".."
+          mkdir -p final_ipa/Payload
+          cp -r ios/App/build_output/Build/Products/Debug-iphoneos/App.app final_ipa/Payload/
 
-      - name: Upload Finished App
+      - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: Casosber-Full-App
-          path: deploy/
+          path: final_ipa/
