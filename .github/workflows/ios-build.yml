@@ -1,4 +1,4 @@
-name: Build iOS App (Full Version)
+name: Build iOS App (Professional)
 on:
   workflow_dispatch:
 
@@ -14,15 +14,20 @@ jobs:
         with:
           node-version: 20
 
-      - name: Install & Prepare Web
+      - name: Install & Prepare Web Assets
         run: |
           npm install
           npm install @capacitor/cli @capacitor/core @capacitor/ios
-          # Vytvoříme složku build a dáme do ní web (bezpečným způsobem)
-          mkdir -p build_web
-          rsync -av --exclude='ios' --exclude='build_web' . build_web/
           
-          # Vytvoříme čistou konfiguraci
+          # VYŘEŠENÍ CHYBY Z OBRÁZKU 0000dc.png:
+          # Vytvoříme složku, kterou Capacitor vyžaduje
+          mkdir -p build_web
+          
+          # Bezpečně zkopírujeme index.html a vše ostatní do build_web
+          # Použijeme rsync, abychom se vyhnuli smyčce z obrázku f5f8d9.png
+          rsync -av --exclude='ios' --exclude='build_web' --exclude='.git' . build_web/
+          
+          # Vytvoříme konfiguraci, která na tuto složku ukazuje
           echo '{"appId": "com.casosber.app", "appName": "Casosber", "webDir": "build_web"}' > capacitor.config.json
 
       - name: Capacitor Sync
@@ -30,26 +35,27 @@ jobs:
           npx capacitor add ios || true
           npx capacitor sync ios
 
-      - name: Build Xcode (Debug Mode)
+      - name: Xcode Compile (Debug)
         run: |
           cd ios/App
+          # Zkompilujeme skutečný kód aplikace
           xcodebuild build -scheme App \
             -destination 'generic/platform=iOS' \
             -configuration Debug \
-            -derivedDataPath build_output \
+            -derivedDataPath output_folder \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY="" \
             COMPILER_INDEX_STORE_ENABLE=NO
 
-      - name: Package for Sideloadly
+      - name: Final Packaging for Sideloadly
         run: |
-          mkdir -p final_export/Payload
-          # Tady kopírujeme skutečný zkompilovaný binární soubor z Xcode
-          cp -r ios/App/build_output/Build/Products/Debug-iphoneos/App.app final_export/Payload/
+          # Vytvoříme finální strukturu, kterou Sideloadly miluje
+          mkdir -p deploy/Payload
+          cp -r ios/App/output_folder/Build/Products/Debug-iphoneos/App.app deploy/Payload/
 
-      - name: Upload Artifact
+      - name: Upload Finished App
         uses: actions/upload-artifact@v4
         with:
-          name: ios-app-real
-          path: final_export/
+          name: Casosber-Full-App
+          path: deploy/
