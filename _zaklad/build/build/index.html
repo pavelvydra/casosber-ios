@@ -565,57 +565,72 @@
 
         
         // --- FUNKCE PRO EXPORT DAT DO CSV ---
-        
-        function exportToCSV() {
-            if (timeEntries.length === 0) {
-                // Místo alertu použijeme console.warn
-                console.warn('Upozornění: Historie je prázdná, nemůžu nic exportovat.');
-                return;
-            }
-            
-            // Hlavička CSV souboru (názvy sloupců)
-            const header = ['Zakazka', 'Start_ISO', 'Konec_ISO', 'Cas_Minuty', 'Cas_Hodiny'].join(';');
-            
-            // Mapování dat
-            const csvRows = timeEntries.map(entry => {
-                const start = new Date(entry.start);
-                const end = new Date(entry.end);
-                
-                // Převedeme minuty na hodiny pro export
-                const hours = (entry.minutes / 60).toFixed(2).replace('.', ','); // Používáme čárku jako desetinný oddělovač pro Excel v ČR/SR
-                
-                // Zde používáme ISO formát pro přesnost a k tomu přidáme lokální formát
-                const row = [
-                    `"${entry.project}"`, // Uvozovky pro název zakázky, pokud obsahuje čárky nebo speciální znaky
-                    `"${start.toLocaleString('cs-CZ')}"`, // Lokální datum a čas START
-                    `"${end.toLocaleString('cs-CZ')}"`,   // Lokální datum a čas END
-                    entry.minutes,
-                    hours
-                ];
-                return row.join(';'); // Oddělovačem je středník (';'), což je typické pro Excel v ČR
-            }).join('\n'); // Každý záznam na novém řádku
+	async function exportToCSV() {
+	    if (timeEntries.length === 0) {
+	        console.warn('Upozornění: Historie je prázdná, nemůžu nic exportovat.');
+	        return;
+	    }
 
-            const csvContent = header + '\n' + csvRows;
-            
-            // --- Logika stahování souboru ---
-            
-            // Vytvoříme 'Blob' s obsahem a správným MIME typem
-            const blob = new Blob(["\ufeff", csvContent], { type: 'text/csv;charset=utf-8;' });
-            
-            // Vytvoříme dočasný odkaz
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(blob);
-            link.download = 'timesheet.csv'; // Jméno souboru
-            
-            // Simulujeme kliknutí na odkaz a stáhneme soubor
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            
-            // Místo alertu použijeme console.log
-            console.log('Export dat dokončen! Soubor timesheet.csv byl stažen.');
-        }
+	    // --- Příprava CSV obsahu (beze změny) ---
+	    const header = ['Zakazka', 'Start_ISO', 'Konec_ISO', 'Cas_Minuty', 'Cas_Hodiny'].join(';');
+	    const csvRows = timeEntries.map(entry => {
+	        const start = new Date(entry.start);
+	        const end = new Date(entry.end);
+	        const hours = (entry.minutes / 60).toFixed(2).replace('.', ',');
+	        const row = [
+	            `"${entry.project}"`,
+	            `"${start.toLocaleString('cs-CZ')}"`,
+	            `"${end.toLocaleString('cs-CZ')}"`,
+	            entry.minutes,
+	            hours
+	        ];
+	        return row.join(';');
+	    }).join('\n');
 
+	    const csvContent = "\ufeff" + header + '\n' + csvRows;
+	    const fileName = 'timesheet.csv';
+
+	    // --- NOVÁ LOGIKA PRO iOS / CAPACITOR ---
+	    try {
+	        // Zkontrolujeme, zda běžíme v Capacitoru (nativní aplikaci)
+	        if (window.Capacitor && window.Capacitor.isNativePlatform()) {
+	            const { Filesystem } = Capacitor.Plugins;
+	            const { Share } = Capacitor.Plugins;
+	            const { Directory, Encoding } = Filesystem;
+
+	            // 1. Uložíme soubor do dočasné paměti telefonu
+	            const savedFile = await Filesystem.writeFile({
+	                path: fileName,
+	                data: csvContent,
+	                directory: Directory.Cache,
+	                encoding: Encoding.UTF8
+	            });
+
+	            // 2. Vyvoláme systémové sdílení
+	            await Share.share({
+ 	               title: 'Export časů',
+ 	               url: savedFile.uri,
+	                dialogTitle: 'Uložit nebo odeslat CSV'
+	            });
+
+	            console.log('Export přes Share Sheet vyvolán.');
+	        } else {
+	            // --- Původní metoda pro prohlížeč (Android/PC) ---
+	            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+	            const link = document.createElement('a');
+	            link.href = URL.createObjectURL(blob);
+	            link.download = fileName;
+	            document.body.appendChild(link);
+	            link.click();
+	            document.body.removeChild(link);
+	            console.log('Soubor stažen standardní cestou.');
+	        }
+	    } catch (error) {
+	        console.error('Chyba při exportu:', error);
+	        // Pokud by selhal plugin, zkusíme aspoň nouzově alert
+	        alert('Chyba při ukládání souboru: ' + error.message);
+	    }
+	}        
 
         // --- SPOUŠTĚČE (EVENT LISTENERS) ---
         projectForm.addEventListener('submit', addProject);
