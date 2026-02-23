@@ -594,7 +594,9 @@
 	    try {
 	        // Zkontrolujeme, zda běžíme v Capacitoru (nativní aplikaci)
 	        if (window.Capacitor && window.Capacitor.isNativePlatform()) {
-	            const { Filesystem } = Capacitor.Plugins;
+	            const Share = window.Capacitor.Plugins.Share;
+				const Directory = window.Capacitor.FilesystemDirectory; // Pro starší verze
+				const Encoding = window.Capacitor.FilesystemEncoding;
 	            const { Share } = Capacitor.Plugins;
 	            const { Directory, Encoding } = Filesystem;
 
