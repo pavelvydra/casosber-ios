@@ -566,10 +566,56 @@
         
         // --- FUNKCE PRO EXPORT DAT DO CSV ---
 	async function exportToCSV() {
-	    if (timeEntries.length === 0) {
-	        console.warn('Upozornění: Historie je prázdná, nemůžu nic exportovat.');
-	        return;
-	    }
+    if (!timeEntries || timeEntries.length === 0) {
+        console.warn('Historie je prázdná.');
+        return;
+    }
+
+    // Příprava dat
+    const header = ['Zakazka', 'Start_ISO', 'Konec_ISO', 'Cas_Minuty', 'Cas_Hodiny'].join(';');
+    const csvRows = timeEntries.map(entry => {
+        const start = new Date(entry.start);
+        const end = new Date(entry.end);
+        const hours = (entry.minutes / 60).toFixed(2).replace('.', ',');
+        return [`"${entry.project}"`, `"${start.toLocaleString('cs-CZ')}"`, `"${end.toLocaleString('cs-CZ')}"`, entry.minutes, hours].join(';');
+    }).join('\n');
+
+    const csvContent = "\ufeff" + header + '\n' + csvRows;
+
+    try {
+        // Kontrola, zda běžíme jako aplikace na iPhonu
+        if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Filesystem) {
+            const { Filesystem, Share } = window.Capacitor.Plugins;
+
+            // 1. Uložení do dočasné paměti (Cache)
+            const result = await Filesystem.writeFile({
+                path: 'export_casu.csv',
+                data: csvContent,
+                directory: 'CACHE',
+                encoding: 'utf8'
+            });
+
+            // 2. Otevření tabulky pro sdílení
+            await Share.share({
+                title: 'Můj export časů',
+                url: result.uri,
+                dialogTitle: 'Kam chcete export uložit?'
+            });
+        } else {
+            // Standardní stažení pro prohlížeč (Android/PC)
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = 'timesheet.csv';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+    } catch (err) {
+        // Pokud se něco pokazí, vypíšeme to srozumitelně
+        alert("Chyba exportu: " + err.message);
+    }
+}
 
 	    // --- Příprava CSV obsahu (beze změny) ---
 	    const header = ['Zakazka', 'Start_ISO', 'Konec_ISO', 'Cas_Minuty', 'Cas_Hodiny'].join(';');
