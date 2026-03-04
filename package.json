@@ -1,7 +1,8 @@
 {
-  "name": "casosber-app",
+  "name": "casosber",
   "version": "1.0.0",
-  "description": "Casosber Export App",
+  "description": "Aplikace pro sběr času",
+  "main": "index.html",
   "dependencies": {
     "@capacitor/core": "^6.0.0",
     "@capacitor/ios": "^6.0.0",
